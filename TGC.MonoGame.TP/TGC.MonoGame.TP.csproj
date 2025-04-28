@@ -23,6 +23,11 @@
     <MonoGameContentReference Include="Content\Content.mgcb" />
   </ItemGroup>
   <ItemGroup>
+  <Content Include="Content\Models\tgc-derby\RacingCar.fbx" />
+  <Content Include="Content\Models\tgc-derby\Vehicle.fbx" />
+  <Content Include="Content\Models\tgc-derby\Weapons.fbx" />
+</ItemGroup>
+  <ItemGroup>
     <TrimmerRootAssembly Include="Microsoft.Xna.Framework.Content.ContentTypeReader" Visible="false" />
   </ItemGroup>
   <ItemGroup>

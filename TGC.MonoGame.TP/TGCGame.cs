@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -10,14 +11,25 @@ namespace TGC.MonoGame.TP
     ///     Inicialmente puede ser renombrado o copiado para hacer mas ejemplos chicos, en el caso de copiar para que se
     ///     ejecute el nuevo ejemplo deben cambiar la clase que ejecuta Program <see cref="Program.Main()" /> linea 10.
     /// </summary>
+    ///
+    ///
+    ///
+    ///
+    class ModelInstance
+    {
+    public Model Model;
+    public Matrix World;
+    }
     public class TGCGame : Game
     {
-        public const string ContentFolder3D = "Models/";
+        public const string ContentFolder3D = "Models\\";
         public const string ContentFolderEffects = "Effects/";
         public const string ContentFolderMusic = "Music/";
         public const string ContentFolderSounds = "Sounds/";
         public const string ContentFolderSpriteFonts = "SpriteFonts/";
         public const string ContentFolderTextures = "Textures/";
+        private List<ModelInstance> instances;
+        
 
         /// <summary>
         ///     Constructor del juego.
@@ -82,23 +94,52 @@ namespace TGC.MonoGame.TP
             SpriteBatch = new SpriteBatch(GraphicsDevice);
 
             // Cargo el modelo del logo.
-            Model = Content.Load<Model>(ContentFolder3D + "tgc-logo/tgc-logo");
 
+            instances = new List<ModelInstance>();
+
+            var meshNames = new[] { "RacingCar", "Vehicle", "Weapons" };
+            string[] subfolders = { "tgc-CombatVehicle", "tgc-RacingCarA" };
+            var rnd = new Random();
+
+            
             // Cargo un efecto basico propio declarado en el Content pipeline.
             // En el juego no pueden usar BasicEffect de MG, deben usar siempre efectos propios.
             Effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");
 
             // Asigno el efecto que cargue a cada parte del mesh.
             // Un modelo puede tener mas de 1 mesh internamente.
-            foreach (var mesh in Model.Meshes)
+
+            //!!!!! aca cargar los modelos del TP!
+            
+            
+            
+            for (int i = 0; i < 150; i++)
             {
-                // Un mesh puede tener mas de 1 mesh part (cada 1 puede tener su propio efecto).
-                foreach (var meshPart in mesh.MeshParts)
+                
+                
+                string name = meshNames[rnd.Next(0, meshNames.Length)];
+                string assetPath = ContentFolder3D + string.Join("/", subfolders) + "/" + name;
+                var model    = Content.Load<Model>(assetPath);
+                
+                
+                foreach (var mesh in model.Meshes)
                 {
-                    meshPart.Effect = Effect;
+                    // Un mesh puede tener mas de 1 mesh part (cada 1 puede tener su propio efecto).
+                    foreach (var meshPart in mesh.MeshParts)
+                    {
+                        meshPart.Effect = Effect;
+                    }
+                    
+                    float x = rnd.Next(-50, 50);
+                    float z = rnd.Next(-50, 50);
+                    var world = Matrix.CreateRotationY((float)rnd.NextDouble() * MathHelper.TwoPi)
+                                * Matrix.CreateTranslation(x, 0, z);
+
+                    instances.Add(new ModelInstance { Model = model, World = world });
+                    
                 }
             }
-
+            
             base.LoadContent();
         }
 
@@ -140,11 +181,15 @@ namespace TGC.MonoGame.TP
             Effect.Parameters["Projection"].SetValue(Projection);
             Effect.Parameters["DiffuseColor"].SetValue(Color.DarkBlue.ToVector3());
 
-            foreach (var mesh in Model.Meshes)
+            foreach (var inst in instances)
             {
-                Effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * World);
-                mesh.Draw();
+                foreach (var mesh in inst.Model.Meshes)
+                {
+                    Effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * World);
+                    mesh.Draw();
+                }
             }
+            
         }
 
         /// <summary>
