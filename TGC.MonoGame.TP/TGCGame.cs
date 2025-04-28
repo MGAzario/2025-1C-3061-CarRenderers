@@ -22,7 +22,7 @@ namespace TGC.MonoGame.TP
     }
     public class TGCGame : Game
     {
-        public const string ContentFolder3D = "Models\\";
+        public const string ContentFolder3D = "Models/";
         public const string ContentFolderEffects = "Effects/";
         public const string ContentFolderMusic = "Music/";
         public const string ContentFolderSounds = "Sounds/";
@@ -98,7 +98,7 @@ namespace TGC.MonoGame.TP
             instances = new List<ModelInstance>();
 
             var meshNames = new[] { "RacingCar", "Vehicle", "Weapons" };
-            string[] subfolders = { "tgc-CombatVehicle", "tgc-RacingCarA" };
+            string[] subfolders = { "tgc-CombatVehicle", "tgc-RacingCarA","tgc-media-2023-2c" };
             var rnd = new Random();
 
             
