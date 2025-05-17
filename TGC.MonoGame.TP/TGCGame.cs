@@ -11,10 +11,7 @@
             ///     Inicialmente puede ser renombrado o copiado para hacer mas ejemplos chicos, en el caso de copiar para que se
             ///     ejecute el nuevo ejemplo deben cambiar la clase que ejecuta Program <see cref="Program.Main()" /> linea 10.
             /// </summary>
-            ///
-            ///
-            ///
-            ///
+           
             class ModelInstance
             {
             public Model Model;
@@ -32,7 +29,78 @@
                 
 
                 /// <summary>
-                ///     Constructor del juego.
+              
+                public class UniversePhysics
+                {
+                    public float FallingSpeed { get; }
+                    public Vector3 JumpingDirection { get; }
+
+                    public UniversePhysics(float fallingSpeed, Vector3 jumpingDirection)
+                    {
+                        FallingSpeed = fallingSpeed;
+                        JumpingDirection = jumpingDirection;
+                    }
+
+                    public UniversePhysics()
+                    {
+                        FallingSpeed = 5.0f;
+                        JumpingDirection = new Vector3(0.0f, 1.0f, 0.0f);
+                    }
+                } 
+                
+                public class Cars
+                {
+                    
+                    public float Speed { get; set; }
+                    public float CarRotation { get; set; }
+                    public bool Jumping { get; set; }
+                    public float JumpSpeed { get; set; }
+                    public float Acceleration { get; set; }
+                    public float RotationSpeed { get; set; }
+                    public Matrix CarWorld { get; set; }
+                    
+                    public Vector3 CarPosition { get; set; }
+                    public Vector3 CarHeight { get; set; }
+                    public float JumpingDistance { get; set; }
+                    
+
+                    public Cars(float speed, float carRotation, bool jumping,float jumpSpeed, float acceleration,
+                        float rotationSpeed,  Matrix carWorld, Vector3 carPosition, Vector3 carHeight, float jumpingDistance)
+                    {
+                        Speed = speed;
+                        CarRotation = carRotation;
+                        Jumping = jumping;
+                        JumpSpeed = jumpSpeed;
+                        
+                        Acceleration = acceleration;
+                        RotationSpeed = rotationSpeed;
+                        
+                        CarWorld = carWorld;
+                        CarPosition = carPosition;
+                        CarHeight = carHeight;
+                        
+                    }
+
+                    public Cars()
+                    {
+                        Speed = 0f;
+                        
+                        CarRotation = 0f;
+                        Jumping = false;
+                        JumpSpeed = 7f;
+                        
+                        Acceleration = 0.8f;
+                        RotationSpeed = 0.5f;
+                        
+                        CarWorld = Matrix.Identity;
+                        CarPosition = Vector3.Zero;
+                        CarHeight = Vector3.Zero;
+                        
+                        JumpingDistance = 0f;
+                        
+                    }
+                    
+                }
                 /// </summary>
                 public TGCGame()
                 {
@@ -150,19 +218,85 @@
                 /// </summary>
                 protected override void Update(GameTime gameTime)
                 {
+                    
+                    float elapsedTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+                    var mainCar = new Cars();
+                    var standardPhysics =  new UniversePhysics();
+                    
+                    
+                    
                     // Aca deberiamos poner toda la logica de actualizacion del juego.
 
                     // Capturar Input teclado
-                    if (Keyboard.GetState().IsKeyDown(Keys.Escape))
+                    
+                    var keyboardState = Keyboard.GetState();
+                    if (keyboardState.IsKeyDown(Keys.Escape))
                     {
                         //Salgo del juego.
                         Exit();
                     }
                     
-                    // Basado en el tiempo que paso se va generando una rotacion.
-                    ///Rotation += Convert.ToSingle(gameTime.ElapsedGameTime.TotalSeconds);
+                    if (keyboardState.IsKeyDown(Keys.Space) && !mainCar.Jumping)
+                    {
+                        // Here comes jumping: it means it should jump and let the gravity do its work.
+                        mainCar.Jumping = true;
+                    }
 
-                    ///World = Matrix.CreateRotationY(Rotation);
+                    if(mainCar.Jumping)
+                    {
+                        mainCar.JumpSpeed -= standardPhysics.FallingSpeed * elapsedTime;
+                        mainCar.CarHeight += standardPhysics.JumpingDirection * mainCar.JumpSpeed;
+                        mainCar.JumpingDistance += mainCar.JumpSpeed * elapsedTime;
+                
+                    if (mainCar.JumpingDistance <= 0f)
+                    {
+                        mainCar.JumpingDistance = 0f;
+                        mainCar.Jumping = false;
+                        mainCar.JumpSpeed = 7f;
+                    }
+                
+                    }
+            
+                    if (keyboardState.IsKeyDown(Keys.A))
+                        {
+                        // Here comes turn left
+                        mainCar.CarRotation += mainCar.RotationSpeed * elapsedTime;
+                        }
+                    if (keyboardState.IsKeyDown(Keys.D))
+                        {
+                        //Here comes turn right
+                        mainCar.CarRotation -= mainCar.RotationSpeed * elapsedTime;
+                        }
+            
+                    Vector3 carDirection =  new Vector3((float)Math.Sin(mainCar.CarRotation), 0, (float)Math.Cos(mainCar.CarRotation));
+
+                    if (keyboardState.IsKeyDown((Keys.W)) || keyboardState.IsKeyDown((Keys.S)) || mainCar.Speed != 0)
+                    {
+                        if (keyboardState.IsKeyDown(Keys.W))
+                        {
+                        //Here come accelearation
+                        mainCar.Speed -= mainCar.Acceleration * elapsedTime;
+                        }
+
+                        if (keyboardState.IsKeyDown(Keys.S))
+                        {
+                        //Here comes desacceleration
+                        mainCar.Speed += mainCar.Acceleration * elapsedTime;
+                        }
+                
+                        if (keyboardState.IsKeyUp((Keys.W)) && keyboardState.IsKeyUp((Keys.S)))
+                            mainCar.Speed -= mainCar.Speed * mainCar.Acceleration * elapsedTime;
+                
+                        mainCar.CarPosition += carDirection * mainCar.Speed;
+                
+                        }
+
+                    mainCar.CarWorld = Matrix.CreateRotationY(mainCar.CarRotation) * Matrix.CreateTranslation(mainCar.CarPosition) * Matrix.CreateTranslation(mainCar.CarHeight);
+            
+                    // Actualizo la camara, enviandole la matriz de mundo del auto.
+                    FollowCamera.Update(gameTime, mainCar.CarWorld);
+                    
 
                     base.Update(gameTime);
                 }
