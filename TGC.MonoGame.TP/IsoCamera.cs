@@ -2,10 +2,10 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace TGC.MonoGame.TP.Zero
+namespace TGC.MonoGame.TP
 {
 
-    class FollowCamera
+    class IsoCamera
     {
         private const float AxisDistanceToTarget = 1000f;
 
@@ -26,7 +26,7 @@ namespace TGC.MonoGame.TP.Zero
 
 
 //Isometrica = Orthographic and from xyz angles?!
-        public FollowCamera(GraphicsDevice graphicsDevice)
+        public IsoCamera(GraphicsDevice graphicsDevice)
         {
 
             int screenWidth = graphicsDevice.Viewport.Width;
@@ -38,9 +38,13 @@ namespace TGC.MonoGame.TP.Zero
         public void Update( Matrix followedWorld)
         {
             
+            
+            //Interpolator no deberia ser necesario para nuestro caso.
+            
+            
             /*var elapsedTime = Convert.ToSingle(gameTime.ElapsedGameTime.TotalSeconds);*/
 
-            var followedPosition = followedWorld.Translation;
+            var followedPosition = followedWorld.Translation; // la posicion del objetivo de la camara.
             
             /*var followedRight = followedWorld.Right;*/
             
@@ -58,16 +62,11 @@ namespace TGC.MonoGame.TP.Zero
        
             PastRightVector = followedRight;*/
             
-
-            
             
             var forward = new Vector3(-1,-1,-1);
             forward.Normalize();
 
-            var eye = followedPosition
-                      - forward * AxisDistanceToTarget;
-                                   
-            
+            var eye = followedPosition - forward * AxisDistanceToTarget; // la posicion del ojo(camara)
 
             var right = Vector3.Cross(forward, Vector3.Up) ;
             

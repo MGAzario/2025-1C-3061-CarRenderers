@@ -3,6 +3,7 @@
         using Microsoft.Xna.Framework;
         using Microsoft.Xna.Framework.Graphics;
         using Microsoft.Xna.Framework.Input;
+      
 
         namespace TGC.MonoGame.TP
         {
@@ -27,9 +28,13 @@
                 public const string ContentFolderTextures = "Textures/";
                 private List<ModelInstance> instances;
                 
+                private IsoCamera IsoCamera { get; set; }
+                private Cars mainCar;
+                private UniversePhysics standardPhysics;
 
                 /// <summary>
               
+                
                 public class UniversePhysics
                 {
                     public float FallingSpeed { get; }
@@ -107,6 +112,8 @@
                     // Maneja la configuracion y la administracion del dispositivo grafico.
                     Graphics = new GraphicsDeviceManager(this);
                     
+                    
+                    
                     Graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width - 100;
                     Graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height - 100;
                     
@@ -142,13 +149,21 @@
                     GraphicsDevice.RasterizerState = rasterizerState;
                     // Seria hasta aca.
 
+                    
                     // Configuramos nuestras matrices de la escena.
                     World = Matrix.Identity;
                     View = Matrix.CreateLookAt(new Vector3(0, 300000, 70000), Vector3.Zero, Vector3.Up);
                     Projection =
                         Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 0.1f, 1000000f);
 
+                    IsoCamera = new IsoCamera(GraphicsDevice); 
+                     mainCar = new Cars();
+                     standardPhysics =  new UniversePhysics();
+                    
+                    
                     base.Initialize();
+
+                    
                 }
 
                 /// <summary>
@@ -167,8 +182,6 @@
 
                     var meshNames = new[] { "RacingCar", "Vehicle",  "Weapons" };
                     string[] subfolders = {"tgc-media-2023-2c"};
-                    var rnd = new Random();
-
                     
                     // Cargo un efecto basico propio declarado en el Content pipeline.
                     // En el juego no pueden usar BasicEffect de MG, deben usar siempre efectos propios.
@@ -179,17 +192,13 @@
 
                     //!!!!! aca cargar los modelos del TP!
                     
-                    
-                    
-                    for (int i = 0; i < 150; i++)
-                    {
-                        
-                        
-                        string name = meshNames[rnd.Next(0, meshNames.Length)];
+                        string name = meshNames[0]; // Le estamos entergando RacingCar podemos
                         string assetPath = ContentFolder3D + string.Join("/", subfolders) + "/" + name ;
                         var model = Content.Load<Model>(assetPath);
                         
+                        //en el futuro podemos manipular la parte de arriba para hacer load de todos los recursos. inc escenario.
                         
+                        //model -> mesh -> mesh parts.
                         foreach (var mesh in model.Meshes)
                         {
                             // Un mesh puede tener mas de 1 mesh part (cada 1 puede tener su propio efecto).
@@ -198,16 +207,17 @@
                                 meshPart.Effect = Effect;
                             }
                             
-                            float x = rnd.Next(-100000, 100000);
+                            //Esta parte pone el model en una posicion random. 
+                            /*float x = rnd.Next(-100000, 100000);
                             float z = rnd.Next(-100000, 100000);
                             var world = Matrix.CreateRotationY((float)rnd.NextDouble() * MathHelper.TwoPi)
-                                        * Matrix.CreateTranslation(x, 0, z);
+                                        * Matrix.CreateTranslation(x, 0, z);*/
+
+                            var world = Matrix.Identity; // como prueba por el momento poner el vehiculo en identity.
+                            //esto se debe cambiar en el futuro. MUY IMPORTANTE!
 
                             instances.Add(new ModelInstance { Model = model, World = world });
-                            
                         }
-                    }
-                    
                     base.LoadContent();
                 }
 
@@ -220,10 +230,6 @@
                 {
                     
                     float elapsedTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
-
-                    var mainCar = new Cars();
-                    var standardPhysics =  new UniversePhysics();
-                    
                     
                     
                     // Aca deberiamos poner toda la logica de actualizacion del juego.
@@ -295,7 +301,7 @@
                     mainCar.CarWorld = Matrix.CreateRotationY(mainCar.CarRotation) * Matrix.CreateTranslation(mainCar.CarPosition) * Matrix.CreateTranslation(mainCar.CarHeight);
             
                     // Actualizo la camara, enviandole la matriz de mundo del auto.
-                    FollowCamera.Update(gameTime, mainCar.CarWorld);
+                    IsoCamera.Update(mainCar.CarWorld);
                     
 
                     base.Update(gameTime);
@@ -311,8 +317,8 @@
                     GraphicsDevice.Clear(Color.Black);
 
                     // Para dibujar le modelo necesitamos pasarle informacion que el efecto esta esperando.
-                    Effect.Parameters["View"].SetValue(View);
-                    Effect.Parameters["Projection"].SetValue(Projection);
+                    Effect.Parameters["View"].SetValue(IsoCamera.View);
+                    Effect.Parameters["Projection"].SetValue(IsoCamera.Projection);
                     Effect.Parameters["DiffuseColor"].SetValue(Color.Red.ToVector3());
 
                     foreach (var inst in instances)
