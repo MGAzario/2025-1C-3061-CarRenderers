@@ -28,10 +28,18 @@
                 public const string ContentFolderTextures = "Textures/";
                 private List<ModelInstance> instances;
                 
+                
                 private IsoCamera IsoCamera { get; set; }
                 private Cars mainCar;
                 private UniversePhysics standardPhysics;
+                
+                private readonly float trackMinX = -500f, trackMaxX = +500f;
+                private readonly float trackMinZ = -300f, trackMaxZ = +300f;
 
+                BasicEffect lineEffect;
+                VertexPositionColor[] borderVerts;
+                
+                
                 /// <summary>
               
                 
@@ -67,6 +75,8 @@
                     public Vector3 CarPosition { get; set; }
                     public Vector3 CarHeight { get; set; }
                     public float JumpingDistance { get; set; }
+                    
+                    public Model carModel { get; set; }
                     
 
                     public Cars(float speed, float carRotation, bool jumping,float jumpSpeed, float acceleration,
@@ -178,7 +188,14 @@
 
                     // Cargo el modelo del logo.
 
-                    instances = new List<ModelInstance>();
+                    instances = new List<ModelInstance>(); 
+                    
+                    
+                    string playCarPath = ContentFolder3D + "/tgc-media-2023-2c/RacingCar";
+                    
+                    mainCar.carModel = Content.Load<Model>(playCarPath);
+                    World = mainCar.CarWorld;
+                    
 
                     var meshNames = new[] { "RacingCar", "Vehicle",  "Weapons" };
                     string[] subfolders = {"tgc-media-2023-2c"};
@@ -212,11 +229,13 @@
                             float z = rnd.Next(-100000, 100000);
                             var world = Matrix.CreateRotationY((float)rnd.NextDouble() * MathHelper.TwoPi)
                                         * Matrix.CreateTranslation(x, 0, z);*/
-
-                            var world = Matrix.Identity; // como prueba por el momento poner el vehiculo en identity.
+                            
+                               var world = Matrix.Identity;
+                             // como prueba por el momento poner el vehiculo en identity.
                             //esto se debe cambiar en el futuro. MUY IMPORTANTE!
-
-                            instances.Add(new ModelInstance { Model = model, World = world });
+                                
+                                instances.Add(new ModelInstance { Model = model, World = world });
+                            
                         }
                     base.LoadContent();
                 }
@@ -264,7 +283,7 @@
                 
                     }
             
-                    if (keyboardState.IsKeyDown(Keys.A))
+                    /*if (keyboardState.IsKeyDown(Keys.A))
                         {
                         // Here comes turn left
                         mainCar.CarRotation += mainCar.RotationSpeed * elapsedTime;
@@ -273,7 +292,7 @@
                         {
                         //Here comes turn right
                         mainCar.CarRotation -= mainCar.RotationSpeed * elapsedTime;
-                        }
+                        }*/
             
                     Vector3 carDirection =  new Vector3((float)Math.Sin(mainCar.CarRotation), 0, (float)Math.Cos(mainCar.CarRotation));
 
@@ -282,13 +301,35 @@
                         if (keyboardState.IsKeyDown(Keys.W))
                         {
                         //Here come accelearation
-                        mainCar.Speed -= mainCar.Acceleration * elapsedTime;
+                        mainCar.Speed += mainCar.Acceleration * elapsedTime;
+                        
+                        if (keyboardState.IsKeyDown(Keys.A))
+                        {
+                            // Here comes turn left
+                            mainCar.CarRotation += mainCar.RotationSpeed * elapsedTime;
+                        }
+                        if (keyboardState.IsKeyDown(Keys.D))
+                        {
+                            //Here comes turn right
+                            mainCar.CarRotation -= mainCar.RotationSpeed * elapsedTime;
+                        }
                         }
 
                         if (keyboardState.IsKeyDown(Keys.S))
                         {
                         //Here comes desacceleration
-                        mainCar.Speed += mainCar.Acceleration * elapsedTime;
+                        mainCar.Speed -= mainCar.Acceleration * elapsedTime;
+                        
+                        if (keyboardState.IsKeyDown(Keys.A))
+                        {
+                            // Here comes turn left
+                            mainCar.CarRotation += mainCar.RotationSpeed * elapsedTime;
+                        }
+                        if (keyboardState.IsKeyDown(Keys.D))
+                        {
+                            //Here comes turn right
+                            mainCar.CarRotation -= mainCar.RotationSpeed * elapsedTime;
+                        }
                         }
                 
                         if (keyboardState.IsKeyUp((Keys.W)) && keyboardState.IsKeyUp((Keys.S)))
@@ -297,11 +338,18 @@
                         mainCar.CarPosition += carDirection * mainCar.Speed;
                 
                         }
-
-                    mainCar.CarWorld = Matrix.CreateRotationY(mainCar.CarRotation) * Matrix.CreateTranslation(mainCar.CarPosition) * Matrix.CreateTranslation(mainCar.CarHeight);
+                    
             
                     // Actualizo la camara, enviandole la matriz de mundo del auto.
-                    IsoCamera.Update(mainCar.CarWorld);
+                    
+                    const float meshOffset = -MathHelper.PiOver2;
+                    
+                    mainCar.CarWorld =
+                        Matrix.CreateRotationY( mainCar.CarRotation)
+                        * Matrix.CreateTranslation(mainCar.CarHeight)
+                        * Matrix.CreateTranslation(mainCar.CarPosition);
+                    
+                    IsoCamera.Update( mainCar.CarWorld);
                     
 
                     base.Update(gameTime);
@@ -314,22 +362,30 @@
                 protected override void Draw(GameTime gameTime)
                 {
                     // Aca deberiamos poner toda la logia de renderizado del juego.
-                    GraphicsDevice.Clear(Color.Black);
+                    GraphicsDevice.Clear(Color.Green);
 
                     // Para dibujar le modelo necesitamos pasarle informacion que el efecto esta esperando.
+                    
                     Effect.Parameters["View"].SetValue(IsoCamera.View);
                     Effect.Parameters["Projection"].SetValue(IsoCamera.Projection);
                     Effect.Parameters["DiffuseColor"].SetValue(Color.Red.ToVector3());
-
+                    
+                    
                     foreach (var inst in instances)
                     {
                         foreach (var mesh in inst.Model.Meshes)
                         {
-                            Effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * inst.World);
+                            Effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * inst.World  );
                             mesh.Draw();
                         }
                     }
+                    
+                    mainCar.carModel.Draw(mainCar.CarWorld,IsoCamera.View, IsoCamera.Projection);
                 }
+                    
+                    
+
+                
 
                 /// <summary>
                 ///     Libero los recursos que se cargaron en el juego.
