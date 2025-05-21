@@ -33,8 +33,8 @@
                 private Cars mainCar;
                 private UniversePhysics standardPhysics;
                 
-                private readonly float trackMinX = -500f, trackMaxX = +500f;
-                private readonly float trackMinZ = -300f, trackMaxZ = +300f;
+                private readonly float trackMinX = -5000f, trackMaxX = +5000f;
+                private readonly float trackMinZ = -3000f, trackMaxZ = +3000f;
 
                 BasicEffect lineEffect;
                 VertexPositionColor[] borderVerts;
@@ -43,79 +43,7 @@
                 /// <summary>
               
                 
-                public class UniversePhysics
-                {
-                    public float FallingSpeed { get; }
-                    public Vector3 JumpingDirection { get; }
-
-                    public UniversePhysics(float fallingSpeed, Vector3 jumpingDirection)
-                    {
-                        FallingSpeed = fallingSpeed;
-                        JumpingDirection = jumpingDirection;
-                    }
-
-                    public UniversePhysics()
-                    {
-                        FallingSpeed = 5.0f;
-                        JumpingDirection = new Vector3(0.0f, 1.0f, 0.0f);
-                    }
-                } 
                 
-                public class Cars
-                {
-                    
-                    public float Speed { get; set; }
-                    public float CarRotation { get; set; }
-                    public bool Jumping { get; set; }
-                    public float JumpSpeed { get; set; }
-                    public float Acceleration { get; set; }
-                    public float RotationSpeed { get; set; }
-                    public Matrix CarWorld { get; set; }
-                    
-                    public Vector3 CarPosition { get; set; }
-                    public Vector3 CarHeight { get; set; }
-                    public float JumpingDistance { get; set; }
-                    
-                    public Model carModel { get; set; }
-                    
-
-                    public Cars(float speed, float carRotation, bool jumping,float jumpSpeed, float acceleration,
-                        float rotationSpeed,  Matrix carWorld, Vector3 carPosition, Vector3 carHeight, float jumpingDistance)
-                    {
-                        Speed = speed;
-                        CarRotation = carRotation;
-                        Jumping = jumping;
-                        JumpSpeed = jumpSpeed;
-                        
-                        Acceleration = acceleration;
-                        RotationSpeed = rotationSpeed;
-                        
-                        CarWorld = carWorld;
-                        CarPosition = carPosition;
-                        CarHeight = carHeight;
-                        
-                    }
-
-                    public Cars()
-                    {
-                        Speed = 0f;
-                        
-                        CarRotation = 0f;
-                        Jumping = false;
-                        JumpSpeed = 7f;
-                        
-                        Acceleration = 0.8f;
-                        RotationSpeed = 0.5f;
-                        
-                        CarWorld = Matrix.Identity;
-                        CarPosition = Vector3.Zero;
-                        CarHeight = Vector3.Zero;
-                        
-                        JumpingDistance = 0f;
-                        
-                    }
-                    
-                }
                 /// </summary>
                 public TGCGame()
                 {
@@ -185,59 +113,72 @@
                 {
                     // Aca es donde deberiamos cargar todos los contenido necesarios antes de iniciar el juego.
                     SpriteBatch = new SpriteBatch(GraphicsDevice);
+                    
+                    lineEffect = new BasicEffect(GraphicsDevice) {
+                        VertexColorEnabled = true,
+                        Projection = IsoCamera.Projection,
+                    };
 
-                    // Cargo el modelo del logo.
+                    borderVerts = new[] {
+                        new VertexPositionColor(new Vector3(trackMinX, 0, trackMinZ), Color.Yellow),
+                        new VertexPositionColor(new Vector3(trackMaxX, 0, trackMinZ), Color.Yellow),
+                        new VertexPositionColor(new Vector3(trackMaxX, 0, trackMaxZ), Color.Yellow),
+                        new VertexPositionColor(new Vector3(trackMinX, 0, trackMaxZ), Color.Yellow),
+                    };
 
                     instances = new List<ModelInstance>(); 
                     
                     
-                    string playCarPath = ContentFolder3D + "/tgc-media-2023-2c/RacingCar";
                     
+                    //////////////////////////////////////////////////////////////////////////
+                    string playCarPath = ContentFolder3D + "/tgc-media-2023-2c/RacingCar";
                     mainCar.carModel = Content.Load<Model>(playCarPath);
                     World = mainCar.CarWorld;
+                    /*foreach (var mesh in mainCar.carModel.Meshes)
+                    {
+                        mainCar.carTextures.Add();
+                    }*/
+                    ///////////////////////////////////////////////////////////////////////
                     
 
-                    var meshNames = new[] { "RacingCar", "Vehicle",  "Weapons" };
-                    string[] subfolders = {"tgc-media-2023-2c"};
                     
+                    var meshNames = new[] { "Weapons" };
+                    string[] subfolders = {"tgc-media-2023-2c"};
                     // Cargo un efecto basico propio declarado en el Content pipeline.
                     // En el juego no pueden usar BasicEffect de MG, deben usar siempre efectos propios.
                     Effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");
-
-                    // Asigno el efecto que cargue a cada parte del mesh.
-                    // Un modelo puede tener mas de 1 mesh internamente.
-
-                    //!!!!! aca cargar los modelos del TP!
+                  
                     
-                        string name = meshNames[0]; // Le estamos entergando RacingCar podemos
-                        string assetPath = ContentFolder3D + string.Join("/", subfolders) + "/" + name ;
-                        var model = Content.Load<Model>(assetPath);
-                        
-                        //en el futuro podemos manipular la parte de arriba para hacer load de todos los recursos. inc escenario.
-                        
-                        //model -> mesh -> mesh parts.
-                        foreach (var mesh in model.Meshes)
-                        {
-                            // Un mesh puede tener mas de 1 mesh part (cada 1 puede tener su propio efecto).
-                            foreach (var meshPart in mesh.MeshParts)
-                            {
-                                meshPart.Effect = Effect;
-                            }
-                            
-                            //Esta parte pone el model en una posicion random. 
-                            /*float x = rnd.Next(-100000, 100000);
-                            float z = rnd.Next(-100000, 100000);
-                            var world = Matrix.CreateRotationY((float)rnd.NextDouble() * MathHelper.TwoPi)
-                                        * Matrix.CreateTranslation(x, 0, z);*/
-                            
-                               var world = Matrix.Identity;
-                             // como prueba por el momento poner el vehiculo en identity.
-                            //esto se debe cambiar en el futuro. MUY IMPORTANTE!
-                                
-                                instances.Add(new ModelInstance { Model = model, World = world });
-                            
-                        }
-                    base.LoadContent();
+                   for(int i = 0; i < 6; i++ )
+                   {
+
+                       string name = meshNames[0]; // Le estamos entergando RacingCar podemos
+                       string assetPath = ContentFolder3D + string.Join("/", subfolders) + "/" + name;
+                       var model = Content.Load<Model>(assetPath);
+
+                       //en el futuro podemos manipular la parte de arriba para hacer load de todos los recursos. inc escenario.
+
+                       //model -> mesh -> mesh parts.
+                       foreach (var mesh in model.Meshes)
+                       {
+                           // Un mesh puede tener mas de 1 mesh part (cada 1 puede tener su propio efecto).
+                           foreach (var meshPart in mesh.MeshParts)
+                           {
+                               meshPart.Effect = Effect;
+                           }
+                           var rnd = new Random();
+
+                           float x = rnd.Next(-5000, 5000);
+                           float z = rnd.Next(-5000, 5000);
+
+                           var world = Matrix.CreateScale(0.5f) * Matrix.CreateRotationY((float)rnd.NextDouble() *
+                                                                    MathHelper.TwoPi)
+                                                                * Matrix.CreateTranslation(x, 0, z);
+                           instances.Add(new ModelInstance { Model = model, World = world });
+
+                       }
+                   }
+                   base.LoadContent();
                 }
 
                 /// <summary>
@@ -336,13 +277,11 @@
                             mainCar.Speed -= mainCar.Speed * mainCar.Acceleration * elapsedTime;
                 
                         mainCar.CarPosition += carDirection * mainCar.Speed;
-                
-                        }
-                    
+                        mainCar.wheelRotation = (mainCar.Speed*elapsedTime);
+                    }
             
                     // Actualizo la camara, enviandole la matriz de mundo del auto.
                     
-                    const float meshOffset = -MathHelper.PiOver2;
                     
                     mainCar.CarWorld =
                         Matrix.CreateRotationY( mainCar.CarRotation)
@@ -350,7 +289,9 @@
                         * Matrix.CreateTranslation(mainCar.CarPosition);
                     
                     IsoCamera.Update( mainCar.CarWorld);
-                    
+
+                    mainCar.CarPosition.X = MathHelper.Clamp(mainCar.CarPosition.X, trackMinX, trackMaxZ);
+                    mainCar.CarPosition.Z = MathHelper.Clamp(mainCar.CarPosition.Z, trackMinZ, trackMaxZ);
 
                     base.Update(gameTime);
                 }
@@ -362,7 +303,7 @@
                 protected override void Draw(GameTime gameTime)
                 {
                     // Aca deberiamos poner toda la logia de renderizado del juego.
-                    GraphicsDevice.Clear(Color.Green);
+                    GraphicsDevice.Clear(Color.Blue);
 
                     // Para dibujar le modelo necesitamos pasarle informacion que el efecto esta esperando.
                     
@@ -379,8 +320,57 @@
                             mesh.Draw();
                         }
                     }
+
+                    foreach (var mesh in mainCar.carModel.Meshes)
+                    {
+                        var baseWorld = Matrix.CreateRotationY(mainCar.CarRotation)
+                                        * Matrix.CreateTranslation(mainCar.CarPosition);
+
+                        Matrix world;
+                        
+                        if (mesh.Name.Contains("Wheel"))
+                        {
+                            var spin = Matrix.CreateRotationX(mainCar.wheelRotation*10f/mainCar.wheelRadius);
+
+                            // 3) the mesh.ParentBone.Transform already positions
+                            //    the wheel correctly relative to the car’s origin.
+                            //    So multiply: ParentBone → spin → car’s world
+                            world =  spin * mesh.ParentBone.Transform
+                                   
+                                    * baseWorld;
+                        }
+                        else
+                        {
+                            world = mesh.ParentBone.Transform * baseWorld;  
+                        }
+                        
+                        foreach (BasicEffect fx in mesh.Effects)
+                        {
+                            fx.World      = world;
+                            fx.View       = IsoCamera.View;
+                            fx.Projection = IsoCamera.Projection;
+                            fx.EnableDefaultLighting();
+                            fx.DiffuseColor = Color.Gray.ToVector3();
+                        }
+                        
+                        mesh.Draw();
+                    }
                     
-                    mainCar.carModel.Draw(mainCar.CarWorld,IsoCamera.View, IsoCamera.Projection);
+                    
+                    
+                    /*mainCar.carModel.Draw(mainCar.CarWorld,IsoCamera.View, IsoCamera.Projection);*/
+                    
+                    lineEffect.View  = IsoCamera.View;
+                    lineEffect.World = Matrix.Identity; 
+                    
+                    foreach (var pass in lineEffect.CurrentTechnique.Passes)
+                    {
+                        pass.Apply();
+                        GraphicsDevice.DrawUserPrimitives(
+                            PrimitiveType.LineStrip,
+                            borderVerts, 0, borderVerts.Length - 1);
+                    }
+
                 }
                     
                     

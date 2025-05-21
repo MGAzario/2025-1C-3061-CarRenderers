@@ -7,7 +7,7 @@ namespace TGC.MonoGame.TP
 
     class IsoCamera
     {
-        private const float AxisDistanceToTarget = 1000f;
+        private const float AxisDistanceToTarget = 10000f;
 
         private const float AngleFollowSpeed = 0.025f;
 
@@ -32,7 +32,7 @@ namespace TGC.MonoGame.TP
             int screenWidth = graphicsDevice.Viewport.Width;
             int screenHeight = graphicsDevice.Viewport.Height;
 
-            Projection = Matrix.CreateOrthographic(screenWidth, screenHeight, 0.01f, 10000f);
+            Projection = Matrix.CreateOrthographic(screenWidth, screenHeight, 0.001f, 100000f);
         }
 
         public void Update( Matrix followedWorld)
