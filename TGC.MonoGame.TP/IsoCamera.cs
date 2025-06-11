@@ -63,7 +63,10 @@ namespace TGC.MonoGame.TP
             PastRightVector = followedRight;*/
             
             
-            var forward = new Vector3(-1,-1,-1);
+            const float Elevation = 0.7f;     
+            const float BackDistance = 1.0f;   
+
+            var forward = new Vector3(BackDistance, -Elevation, BackDistance);
             forward.Normalize();
 
             var eye = followedPosition - forward * AxisDistanceToTarget; // la posicion del ojo(camara)
