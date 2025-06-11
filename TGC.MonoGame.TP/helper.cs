@@ -43,6 +43,10 @@ public class Cars
 
     public float wheelRadius = 0.1f;
     public float wheelRotation { get; set; }
+    
+    public float carDamage { get; set; }
+    
+    public float carHp { get; set; }
 
     public List<Texture2D> carTextures; 
                     
@@ -70,10 +74,10 @@ public class Cars
                         
         CarRotation = 0f;
         Jumping = false;
-        JumpSpeed = 7f;
+        JumpSpeed = 2;
                         
-        Acceleration = 0.8f;
-        RotationSpeed = 0.5f;
+        Acceleration = 2f;
+        RotationSpeed = 1f;
                         
         CarWorld = Matrix.Identity;
         CarPosition = Vector3.Zero;
@@ -83,3 +87,6 @@ public class Cars
     }
                     
 }
+
+
+
