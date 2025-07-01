@@ -25,13 +25,26 @@ namespace TGC.MonoGame.TP
             font = aux;
         }
         
-        public static void DrawCenterTextY(string msg, float Y, float escala)
+        /*public static void DrawCenterTextY(string msg, float Y, float escala)
         {
             var W = graphicsDevice.Viewport.Width;
             var H = graphicsDevice.Viewport.Height;
             var size = font.MeasureString(msg) * escala;
             spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null,
                 Matrix.CreateScale(escala) * Matrix.CreateTranslation((W - size.X) / 2, Y, 0));
+            spriteBatch.DrawString(font, msg, new Vector2(0, 0), Color.YellowGreen);
+            spriteBatch.End();
+        }*/
+
+        public static void DrawTextOnXY(string msg, Point location, float escala)
+        {
+            var W = graphicsDevice.Viewport.Width;
+            var H = graphicsDevice.Viewport.Height;
+            var size = font.MeasureString(msg) * escala;
+            spriteBatch.Begin(SpriteSortMode.Deferred,BlendState.AlphaBlend,SamplerState.LinearClamp,null,
+                RasterizerState.CullCounterClockwise,null, Matrix.CreateScale(escala) 
+                                                           * Matrix.CreateTranslation(location.X + (size.X/2), 
+                                                               location.Y + (size.Y/2), 0));
             spriteBatch.DrawString(font, msg, new Vector2(0, 0), Color.YellowGreen);
             spriteBatch.End();
         }

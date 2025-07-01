@@ -5,8 +5,8 @@
         using Microsoft.Xna.Framework.Graphics;
         using Microsoft.Xna.Framework.Input;
         using TGC.MonoGame.TP.Content.Collisions;
-        using System.IO;
-      
+        using TGC.MonoGame.TP.Content;
+        using System.Linq;
 
         namespace TGC.MonoGame.TP
         {
@@ -16,13 +16,21 @@
             ///     ejecute el nuevo ejemplo deben cambiar la clase que ejecuta Program <see cref="Program.Main()" /> linea 10.
             /// </summary>
            
-            class ModelInstance
+            public class ModelInstance
             {
             public Model Model;
             public Matrix World;
             }
             public class TGCGame : Game
             {
+
+                public const int PRESENTATION_0_SCREN = 0;// beginning
+                public const int MAIN_1_SCREEN = 1; // main car crashing stuff.
+                public const int END_SCREEN = 2;
+                public int STATUS = PRESENTATION_0_SCREN;
+                
+                public readonly Vector3 lightPosition = new Vector3(300f,300f, -300f);
+                
                 public const string ContentFolder3D = "Models/";
                 public const string ContentFolderEffects = "Effects/";
                 public const string ContentFolderMusic = "Music/";
@@ -33,12 +41,20 @@
                 private List<Vector3> listaCoord; // Do we need this?
                 
                 private IsoCamera IsoCamera { get; set; }
+                private CubeMapCamera cubeMapCamera;
                 private Cars mainCar;
+                private Cars enemyCar1;
+                private float maxSpeed = 28;
+                private float minSpeed = -8;
                 private UniversePhysics standardPhysics;
+                private float elapsedTime;
+                private float timer;
+                private int finalSpeed;
+                //private int finalRotationSpeed;
                 
                 private BoundingSphere powerSphere;
                 private List<BoundingSphere> listPowerSphere;
-                private List<BoundingBox> listTerrain;
+                //private List<BoundingBox> listTerrain;
                 
                 private OBB carBox;
                 private Matrix carOBBWorld; // Do we even need it?
@@ -47,32 +63,38 @@
                 
                 private Matrix floorWorld;
                 private Plane floorPlane;
+                private RenderTargetCube environmentMap;
                 
-                private readonly float trackMinX = -5000f, trackMaxX = +5000f;
-                private readonly float trackMinZ = -3000f, trackMaxZ = +3000f;
+                private readonly float trackMinX = -10000f, trackMaxX = +10000f;
+                private readonly float trackMinZ = -10000f, trackMaxZ = +10000f;
 
+                private Effect carShader;
                 BasicEffect lineEffect;
                 VertexPositionColor[] borderVerts;
-
+                VertexPositionTexture[] floorVerts;
+                
                 private Texture2D earthTexture;
+                
                 private SoundEffect accelerationSound;
-                //private SoundEffect engineSound;
                 private SoundEffectInstance accelerationInst;
-
                 private SoundEffect pingSound;
                 private SoundEffectInstance pingInst;
                 
-                //private List<SoundEffect> engineSoundsList;
-
                 private SpriteFont font;
+                private KeyboardState previousKeyboardState;
+
+                private int windowW;
+                private int windowH;
+                private int windowX;
+                private int windowY;
+                private Point windowCornerTL;   //top left
+                private Point windowCornerTR;
+                private Point windowCornerBL;
+                private Point windowCornerBR;  //Bottom Right.
+
+                private BoundingFrustum boundingFrustum;
                 
-                private KeyboardState       previousKeyboardState;
-                    
                 
-                
-                /// <summary>
-                
-                /// </summary>
                 public TGCGame()
                 {
                     // Maneja la configuracion y la administracion del dispositivo grafico.
@@ -81,8 +103,7 @@
                     Graphics.PreferredBackBufferWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width - 100;
                     Graphics.PreferredBackBufferHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height - 100;
                     
-                    // Para que el juego sea pantalla completa se puede usar Graphics IsFullScreen.
-                    // Carpeta raiz donde va a estar toda la Media.
+                    
                     Content.RootDirectory = "Content";
                     // Hace que el mouse sea visible.
                     IsMouseVisible = true;
@@ -110,27 +131,38 @@
                     // Apago el backface culling.
                     // Esto se hace por un problema en el diseno del modelo del logo de la materia.
                     // Una vez que empiecen su juego, esto no es mas necesario y lo pueden sacar.
+                    
                     var rasterizerState = new RasterizerState();
                     rasterizerState.CullMode = CullMode.None;
                     GraphicsDevice.RasterizerState = rasterizerState;
                     // Seria hasta aca.
                     
                     borderVerts = new[] {
-                        new VertexPositionColor(new Vector3(trackMinX, 0, trackMinZ), Color.Yellow),
-                        new VertexPositionColor(new Vector3(trackMaxX, 0, trackMinZ), Color.Yellow),
-                        new VertexPositionColor(new Vector3(trackMaxX, 0, trackMaxZ), Color.Yellow),
-                        new VertexPositionColor(new Vector3(trackMinX, 0, trackMaxZ), Color.Yellow),
+                        new VertexPositionColor(new Vector3(trackMinX, 0, trackMinZ), Color.Red),
+                        new VertexPositionColor(new Vector3(trackMaxX, 0, trackMinZ), Color.Red),
+                        new VertexPositionColor(new Vector3(trackMaxX, 0, trackMaxZ), Color.Red),
+                        new VertexPositionColor(new Vector3(trackMinX, 0, trackMaxZ), Color.Red),
+                    };
+
+                    floorVerts = new[]
+                    {
+                        new VertexPositionTexture(new Vector3(-trackMaxX/2, 0, -trackMinZ/2), Vector2.Zero),
+                        new VertexPositionTexture(new Vector3(-trackMaxX/2, 0, trackMinZ/2), new Vector2(0,20)),
+                        new VertexPositionTexture(new Vector3(trackMaxX/2, 0, -trackMinZ/2), new Vector2(20,0)),
+                        
+                        new VertexPositionTexture(new Vector3(trackMaxX/2, 0, -trackMinZ/2), new Vector2(20,0)),
+                        new VertexPositionTexture(new Vector3(-trackMaxX/2, 0, trackMinZ/2), new Vector2(0,20)),
+                        new VertexPositionTexture(new Vector3(trackMaxX/2, 0, trackMinZ/2), new Vector2(20,20)),
                     };
 
                     rampWorld = new[] {
                         Matrix.CreateScale(800f, 4f, 200f) * Matrix.CreateTranslation(0f, 0f, 1200) * Matrix.CreateRotationX(45f),
                         Matrix.CreateScale(800f, 4f, 200f) * Matrix.CreateTranslation(0f, 0f, -1200) * Matrix.CreateRotationX(-45f),
                         Matrix.CreateScale(800f,4f,1150f) * Matrix.CreateTranslation(0f, -936f,0f),
-                        
                     };
                     
-                    
                     // Configuramos nuestras matrices de la escena.
+                    
                     World = Matrix.Identity;
                     View = Matrix.CreateLookAt(new Vector3(0, 300000, 70000), Vector3.Zero, Vector3.Up);
                     Projection =
@@ -138,13 +170,29 @@
 
                     IsoCamera = new IsoCamera(GraphicsDevice); 
                     mainCar = new Cars();
+                    enemyCar1 = new Cars(new Vector3(1500f, 0, 1500f));
+                    
                     standardPhysics =  new UniversePhysics();
                     
+                    //the frustrum.
+                    boundingFrustum = new BoundingFrustum(IsoCamera.View * IsoCamera.Projection);
+                    
                     floorWorld = Matrix.CreateScale(20000f, 0.1f, 20000f);// creation of floor draw material
-                    listTerrain = new List<BoundingBox>();
-                    listTerrain.Add(new BoundingBox(new Vector3(-10000f,-0001f,-10000f), new Vector3(10000f,0,10000f)));// Creation of floor box.
                     
                     floorPlane = new Plane(Vector3.UnitZ, new Vector3(0, 0, 0));
+
+                    
+                    Rectangle client = Window.ClientBounds;
+                    windowH = client.Height; // entire window height
+                    windowW = client.Width; // entire window width
+                    windowX = client.X; // distance from window left
+                    windowY = client.Y; // distance from window down
+
+                    windowCornerTL = new Point(windowX, windowY);
+                    windowCornerTR = new Point(windowW + windowX, windowY);
+                    windowCornerBL = new Point(windowX, windowY + windowH);
+                    windowCornerBR = new Point(windowX + windowW, windowY + windowH);
+                    
                     
                     base.Initialize();
                     
@@ -166,38 +214,71 @@
                         VertexColorEnabled = true,
                         Projection = IsoCamera.Projection,
                     };
+                    string carShaderPath = ContentFolderEffects + "/CarShader";
+                    carShader = Content.Load<Effect>(carShaderPath);
 
+                    //here we load the shader for all cars.
+                    Cars.SetEffect(carShader);
                     
                     instances = new List<ModelInstance>(); 
                     listPowerSphere = new List<BoundingSphere>();
                     
+                    //here we load the car models
                     string playCarPath = ContentFolder3D + "/tgc-media-2023-2c/RacingCar";
                     mainCar.carModel = Content.Load<Model>(playCarPath);
-                    World = mainCar.CarWorld;
+                    enemyCar1.carModel = Content.Load<Model>(playCarPath);
                     
-                    var meshNames = new[] { "Weapons" };
-                    string[] subfolders = {"tgc-media-2023-2c"};
-                    // Cargo un efecto basico propio declarado en el Content pipeline.
-                    // En el juego no pueden usar BasicEffect de MG, deben usar siempre efectos propios.
-                    Effect = Content.Load<Effect>(ContentFolderEffects + "BasicShader");
+                    environmentMap = new RenderTargetCube(GraphicsDevice, 2048, false,
+                        SurfaceFormat.Color, DepthFormat.Depth24, 0, RenderTargetUsage.DiscardContents);
+                    //here we get the texture from BasicEffect.... you know, maybe it works.
+                    var texture = ((BasicEffect) mainCar.carModel.Meshes.FirstOrDefault()?.MeshParts.FirstOrDefault()?.Effect)?.Texture;
                     
-                    
-                    string floorTexturePath = ContentFolderTextures + "/floor/tierra";
-                    earthTexture = Content.Load<Texture2D>(floorTexturePath);
-                    boxPrimitive = new BoxPrimitive(GraphicsDevice, Vector3.One, earthTexture);
-                    
-                    
-                    
-                    
-                    /*engineSoundsList = new List<SoundEffect>(); // might not need this part.
-                    
-                    for (int i = 0; i < 6; i++)
+                    //here we apply the carShader to mainCar andbelow to enemyCar1. Later we will have a list of enemyCars.
+                    //a singular car is only for test change that later.
+                    foreach (var modelMesh in mainCar.carModel.Meshes)
                     {
-                        string number = i.ToString();
-                        string carEnginePath = ContentFolderSounds + "/CarEngine/loop_" + number;
-                        engineSound = Content.Load<SoundEffect>(carEnginePath);
-                        engineSoundsList.Add(engineSound);
-                    }*/
+                        foreach (var meshPart in modelMesh.MeshParts)
+                        {
+                            meshPart.Effect = carShader;
+                        }
+                    }
+                    
+                    foreach (var modelMesh in enemyCar1.carModel.Meshes)
+                    {
+                        foreach (var meshPart in modelMesh.MeshParts)
+                        {
+                            meshPart.Effect = carShader;
+                        }
+                    }
+                    
+                    
+                    
+                    
+                    
+                    //CONSIDER USING A DIFFERENT INSTACE OF CARSHADER FOR ENEMYCARS. OR NOT.
+                    //////Here we set some of the parameters of the CarShader. Maybe we move this to a different location later. 
+                    /*carShader.Parameters["SceneTex"].SetValue(texture);*/
+                    GraphicsDevice.Textures[0] = texture;
+                    GraphicsDevice.SamplerStates[0] = SamplerState.LinearWrap;
+                    
+                    carShader.Parameters["ambientColor"].SetValue(new Vector3(0.4f, 0.4f, 0.4f));
+                    carShader.Parameters["diffuseColor"].SetValue(new Vector3(1f, 1f, 1f));
+                    carShader.Parameters["specularColor"].SetValue(new Vector3(1f, 1f, 1f));
+
+                    carShader.Parameters["KAmbient"].SetValue(0.5f);
+                    carShader.Parameters["KDiffuse"].SetValue(1.0f);
+                    carShader.Parameters["KSpecular"].SetValue(0.8f);
+                    carShader.Parameters["shininess"].SetValue(10.0f);
+                    
+                    carShader.Parameters["lightPosition"].SetValue(lightPosition);
+                    /////
+                    
+                    
+                    /*World = mainCar.CarWorld;*/
+                    boxPrimitive = new BoxPrimitive(GraphicsDevice, Vector3.One, earthTexture);// Apprently we do need this. ??? why?
+                    MapCreator.LoadAll(Content);// loads weapons floor texture path. and other things on map.
+                    (instances, listPowerSphere) = MapCreator.InitializeWeapons(Content);// what name suggest. This inlcude spheres for power.
+                    
                     
                     string carAccelerationPath = ContentFolderSounds + "/carAcceleration/car acceleration";
                     accelerationSound = Content.Load<SoundEffect>(carAccelerationPath);
@@ -215,48 +296,8 @@
                     font = Content.Load<SpriteFont>(fontPath);
                     UI.Initialize(font,GraphicsDevice);
                     
+                    //// we load the cars here.
                     
-                   for(int i = 0; i < 15; i++ )
-                   {
-
-                       string name = meshNames[0]; // Le estamos entergando RacingCar podemos
-                       string assetPath = ContentFolder3D + string.Join("/", subfolders) + "/" + name;
-                       var model = Content.Load<Model>(assetPath);
-
-                       //en el futuro podemos manipular la parte de arriba para hacer load de todos los recursos. inc escenario.
-                       //model -> mesh -> mesh parts.
-                       foreach (var mesh in model.Meshes)
-                       {
-                           // Un mesh puede tener mas de 1 mesh part (cada 1 puede tener su propio efecto).
-                           // need a list for collision matrix centres and other stuffs. Same number of list and stuff. Jesus.
-                           
-                           foreach (var meshPart in mesh.MeshParts)
-                           {
-                               meshPart.Effect = Effect;
-                           }
-                           var rnd = new Random();
-
-                           float x = rnd.Next(-5000, 5000);
-                           float z = rnd.Next(-5000, 5000);
-
-                           var world = Matrix.CreateScale(0.05f) * Matrix.CreateRotationY((float)rnd.NextDouble() *
-                                                                    MathHelper.TwoPi)
-                                                                * Matrix.CreateTranslation(x, 0, z);
-                           instances.Add(new ModelInstance { Model = model, World = world });
-                           
-                           //Aca agregamos tambien las diferentes esferas de power. USAMOS ESFERAS PARA POWERS.
-                           
-                           powerSphere = OBB.CreateSphereFrom(model);
-                           powerSphere.Center = new Vector3(x,0,z); // we will check if this works or not. 
-                           powerSphere.Radius = 100f; // Adjust this when needed.
-                           
-                           listPowerSphere.Add(powerSphere); // we kinds need to intersect the tank with all the powers we are going to add.
-                           //listaCoord.Add(new Vector3(x, 0, z)); 
-                           
-                           
-                       }
-                   }
-                   
                    
                    //OBB box creation.
                    var temporaryCubeAABB = OBB.CreateAABBFrom(mainCar.carModel);
@@ -265,6 +306,8 @@
                    carBox = OBB.FromAABB(temporaryCubeAABB);
                    carBox.Center = Vector3.UnitX * 50f;
                    carBox.Orientation = Matrix.CreateRotationY(mainCar.CarRotation);
+
+                   cubeMapCamera = new CubeMapCamera(mainCar.CarPosition, 0.1f, 1000f);
                    
                    base.LoadContent();
                 }
@@ -278,211 +321,275 @@
                 protected override void Update(GameTime gameTime)
                 {
                     
-                    float elapsedTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+                    
+                    elapsedTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+                    boundingFrustum.Matrix = IsoCamera.View * IsoCamera.Projection; // continous update of the bouding box via camera.
+                    
                     // Aca deberiamos poner toda la logica de actualizacion del juego.
 
                     // Capturar Input teclado
                     
                     var keyboardState = Keyboard.GetState();
-                    
-                    
                     if (keyboardState.IsKeyDown(Keys.Escape))
-                    { //Salgo del juego.
+                    {
+                        //Salgo del juego.
                         Exit();
                     }
-                    
-                    if (keyboardState.IsKeyDown(Keys.Space) && !mainCar.Jumping)
-                    { // Here comes jumping: it means it should jump and let the gravity do its work.
-                        mainCar.Jumping = true;
-                    }
 
-                    if(mainCar.Jumping)
+                    switch (STATUS)
                     {
-                        mainCar.JumpSpeed -= standardPhysics.FallingSpeed * elapsedTime;
-                        mainCar.CarHeight += standardPhysics.JumpingDirection * mainCar.JumpSpeed;
-                        mainCar.JumpingDistance += mainCar.JumpSpeed * elapsedTime;
-                
-                    if (mainCar.JumpingDistance <= 0f)
-                    {
-                        mainCar.JumpingDistance = 0f;
-                        mainCar.Jumping = false;
-                        mainCar.JumpSpeed = 7f;
-                    }
-                
-                    }
-            
-                    Vector3 carDirection =  new Vector3((float)Math.Sin(mainCar.CarRotation), 0, (float)Math.Cos(mainCar.CarRotation));
+                        
+                        case PRESENTATION_0_SCREN:
+                            if (keyboardState.IsKeyDown(Keys.Space))
+                                STATUS = MAIN_1_SCREEN;
+                            break;
+                        case END_SCREEN:
+                            if (keyboardState.IsKeyDown(Keys.Space))
+                                STATUS = MAIN_1_SCREEN;
+                            if (keyboardState.IsKeyDown(Keys.Enter))
+                                STATUS = PRESENTATION_0_SCREN;
+                            break;
+                        default:
+                        {
 
-                    if (keyboardState.IsKeyDown((Keys.W)) || keyboardState.IsKeyDown((Keys.S)) || mainCar.Speed != 0)
-                    {
-                        if (keyboardState.IsKeyDown(Keys.W)) //Here come accelearation
-                            mainCar.Speed += mainCar.Acceleration * elapsedTime;
+                            timer += elapsedTime;
+                            if (keyboardState.IsKeyDown(Keys.Space) && !mainCar.Jumping)
+                            {
+                                // Here comes jumping: it means it should jump and let the gravity do its work.
+                                mainCar.Jumping = true;
+                            }
+
+                            if (mainCar.Jumping)
+                            {
+                                mainCar.JumpSpeed -= standardPhysics.FallingSpeed * elapsedTime;
+                                mainCar.CarHeight += standardPhysics.JumpingDirection * mainCar.JumpSpeed;
+                                mainCar.JumpingDistance += mainCar.JumpSpeed * elapsedTime;
+
+                                if (mainCar.JumpingDistance <= 0f)
+                                {
+                                    mainCar.JumpingDistance = 0f;
+                                    mainCar.Jumping = false;
+                                    mainCar.JumpSpeed = 7f;
+                                }
+
+                            }
+
+                            Vector3 carDirection = new Vector3((float)Math.Sin(mainCar.CarRotation), 0,
+                                (float)Math.Cos(mainCar.CarRotation));
+
+                            if (keyboardState.IsKeyDown((Keys.W)) || keyboardState.IsKeyDown((Keys.S)) ||
+                                mainCar.Speed != 0)
+                            {
+                                if (keyboardState.IsKeyDown(Keys.W)) //Here come accelearation
+                                    mainCar.Speed += mainCar.Acceleration * elapsedTime;
+
+
+                                if (keyboardState.IsKeyDown(Keys.S)) //Here comes desacceleration
+                                    mainCar.Speed -= mainCar.Acceleration * elapsedTime;
+
+                                if (keyboardState.IsKeyUp((Keys.W)) && keyboardState.IsKeyUp((Keys.S)))
+                                    mainCar.Speed -= mainCar.Speed * mainCar.Acceleration * elapsedTime;
+
+
+                                if (keyboardState.IsKeyDown(Keys.A)) // Here comes turn left
+                                    mainCar.CarRotation += mainCar.RotationSpeed * elapsedTime *
+                                                           Math.Min(1f, mainCar.Speed / 2);
+
+                                if (keyboardState.IsKeyDown(Keys.D)) //Here comes turn right
+                                    mainCar.CarRotation -= mainCar.RotationSpeed * elapsedTime *
+                                                           Math.Min(1f, mainCar.Speed / 2);
+
+
+                                finalSpeed = (int)Math.Clamp(mainCar.Speed, minSpeed, maxSpeed);
+                                mainCar.CarPosition += carDirection * finalSpeed;
+                                mainCar.wheelRotation = (mainCar.Speed * elapsedTime);
+                            }
+
+                            //sound part
+
+                            if (keyboardState.IsKeyDown(Keys.W) && !previousKeyboardState.IsKeyDown(Keys.W))
+                                accelerationInst.Play();
+
+                            if (!keyboardState.IsKeyDown(Keys.W) && previousKeyboardState.IsKeyDown(Keys.W))
+                                accelerationInst.Stop();
+
+                            previousKeyboardState = keyboardState;
+
+                            // Actualizo la camara, enviandole la matriz de mundo del auto.
                             
 
-                        if (keyboardState.IsKeyDown(Keys.S)) //Here comes desacceleration
-                            mainCar.Speed -= mainCar.Acceleration * elapsedTime;
+                            mainCar.CarWorld =
+                                Matrix.CreateRotationY(mainCar.CarRotation)
+                                * Matrix.CreateTranslation(mainCar.CarHeight)
+                                * Matrix.CreateTranslation(mainCar.CarPosition);
 
-                        if (keyboardState.IsKeyUp((Keys.W)) && keyboardState.IsKeyUp((Keys.S)))
-                            mainCar.Speed -= mainCar.Speed * mainCar.Acceleration * elapsedTime;
+                            IsoCamera.Update(mainCar.CarWorld);
+                            
+                            
+                            carShader.Parameters["eyePosition"].SetValue(IsoCamera.eye);
 
-                        
-                        if (keyboardState.IsKeyDown(Keys.A)) // Here comes turn left
-                            mainCar.CarRotation += mainCar.RotationSpeed * elapsedTime * Math.Min(1f, mainCar.Speed/2);
-                      
-                        if (keyboardState.IsKeyDown(Keys.D)) //Here comes turn right
-                            mainCar.CarRotation -= mainCar.RotationSpeed * elapsedTime * Math.Min(1f, mainCar.Speed/2);
-                        
-                        mainCar.CarPosition += carDirection * mainCar.Speed;
-                        mainCar.wheelRotation = (mainCar.Speed*elapsedTime);
-                    }
-                    
-                    //sound part
-                    
-                    
-                    if (keyboardState.IsKeyDown(Keys.W) && !previousKeyboardState.IsKeyDown(Keys.W))
-                        accelerationInst.Play();
-                    
-                    if (!keyboardState.IsKeyDown(Keys.W) && previousKeyboardState.IsKeyDown(Keys.W))
-                        accelerationInst.Stop();
+                            
+                            var rotation = Matrix.CreateRotationY(mainCar.CarRotation);
+                            var translation = Matrix.CreateTranslation(mainCar.CarPosition);
+                            carBox.Orientation = rotation;
+                            var height = mainCar.CarHeight.X;
+                            carBox.Center = mainCar.CarPosition + new Vector3(0, height, 0);
 
-                    previousKeyboardState = keyboardState;    
-            
-                    // Actualizo la camara, enviandole la matriz de mundo del auto.
-                    
-                    
-                    mainCar.CarWorld =
-                        Matrix.CreateRotationY( mainCar.CarRotation)
-                        * Matrix.CreateTranslation(mainCar.CarHeight)
-                        * Matrix.CreateTranslation(mainCar.CarPosition);
-                    
-                    IsoCamera.Update( mainCar.CarWorld);
-                    
-                    var rotation = Matrix.CreateRotationY(mainCar.CarRotation);
-                    var translation = Matrix.CreateTranslation(mainCar.CarPosition);
-                    carBox.Orientation = rotation;
-                    var height = mainCar.CarHeight.X;
-                    carBox.Center = mainCar.CarPosition + new Vector3(0, height, 0);
+                            // Create an OBB World-matrix so we can draw a cube representing it or something like that. Do we even need to draw it?
+                            carOBBWorld = Matrix.CreateScale(carBox.Extents * 2f) *
+                                          carBox.Orientation *
+                                          translation;
 
-                    // Create an OBB World-matrix so we can draw a cube representing it or something like that. Do we even need to draw it?
-                    carOBBWorld = Matrix.CreateScale(carBox.Extents * 2f) *
-                                     carBox.Orientation *
-                                     translation;
-                    
-                    //power up car intersection.
-                    for (int i = 0; i < listPowerSphere.Count; i++)// Lista pequeña.
-                    {
-                        
-                        BoundingSphere auxSphere = listPowerSphere[i];
-                        
-                        if (carBox.Intersects(auxSphere))
-                        {
-                            ///// Que pasa aca si tocan? Logica/Grafica.
-                            instances.RemoveAt(i); // Parte grafica. Borrar de la lista.
-                            listPowerSphere.RemoveAt(i);
-                            pingSound.Play();
-                            i--;
+                            //power up car intersection.
+                            for (int i = 0; i < listPowerSphere.Count; i++) // Lista pequeña.
+                            {
+                                BoundingSphere auxSphere = listPowerSphere[i];
+                                if (carBox.Intersects(auxSphere))
+                                {
+                                    ///// Que pasa aca si tocan? Logica/Grafica.
+                                    instances.RemoveAt(i); // Parte grafica. Borrar de la lista.
+                                    listPowerSphere.RemoveAt(i);
+                                    pingSound.Play();
+                                    i--;
+                                }
+                            }
+
+                            enemyCar1.CarWorld = enemyCar1.movementAI(mainCar, elapsedTime);
+                            mainCar.CarPosition.X = MathHelper.Clamp(mainCar.CarPosition.X, trackMinX, trackMaxZ);
+                            mainCar.CarPosition.Z = MathHelper.Clamp(mainCar.CarPosition.Z, trackMinZ, trackMaxZ);
+
+                            break;
                         }
                     }
-                    
-                    
-                    mainCar.CarPosition.X = MathHelper.Clamp(mainCar.CarPosition.X, trackMinX, trackMaxZ);
-                    mainCar.CarPosition.Z = MathHelper.Clamp(mainCar.CarPosition.Z, trackMinZ, trackMaxZ);
 
                     base.Update(gameTime);
                 }
-                /// <summary>
-                ///     Se llama cada vez que hay que refrescar la pantalla.
-                ///     Escribir aqui el codigo referido al renderizado.
-                /// </summary>
+             
                 
                 protected override void Draw(GameTime gameTime)
                 {
-                    // Aca deberiamos poner toda la logia de renderizado del juego.
+                    // Aca deberiamos poner toda la logia de renderizado del juego. 
+                    //clean the screen blue before drawing.
                     GraphicsDevice.Clear(Color.Blue);
                     
-
                     // Para dibujar le modelo necesitamos pasarle informacion que el efecto esta esperando.
-                    
+                    this.Effect = MapCreator.Effect;
                     Effect.Parameters["View"].SetValue(IsoCamera.View);
                     Effect.Parameters["Projection"].SetValue(IsoCamera.Projection);
                     Effect.Parameters["DiffuseColor"].SetValue(Color.Red.ToVector3());
 
-                    int uiSpeed = (int)mainCar.Speed* 5;
-                    
-                    UI.DrawCenterTextY("Speed:" + uiSpeed , 600, 1);
-                    
-                    foreach (var inst in instances)
+
+                    switch (STATUS)
                     {
-                        
-                        foreach (var mesh in inst.Model.Meshes)
-                        {
-                            Effect.Parameters["World"].SetValue(mesh.ParentBone.Transform * inst.World  );
-                            mesh.Draw();
-                        }
-                    }
 
-                    foreach (var mesh in mainCar.carModel.Meshes)
-                    {
-                        var baseWorld = Matrix.CreateRotationY(mainCar.CarRotation)
-                                        *Matrix.CreateTranslation(mainCar.CarHeight)
-                                        * Matrix.CreateTranslation(mainCar.CarPosition);
+                        case PRESENTATION_0_SCREN:{
 
-                        Matrix world;
-                        
-                        if (mesh.Name.Contains("Wheel"))
-                        {
-                            var spin = Matrix.CreateRotationX(mainCar.wheelRotation*10f/mainCar.wheelRadius);
-
-                            // 3) the mesh.ParentBone.Transform already positions
-                            //    the wheel correctly relative to the car’s origin.
-                            //    So multiply: ParentBone → spin → car’s world
-                            world =  spin * mesh.ParentBone.Transform * baseWorld;
-                        }
-                        else
-                        {
-                            world = mesh.ParentBone.Transform * baseWorld;  
-                        }
-                        foreach (BasicEffect fx in mesh.Effects)
-                        {
-                            fx.World      = world;
-                            fx.View       = IsoCamera.View;
-                            fx.Projection = IsoCamera.Projection;
-                            fx.EnableDefaultLighting();
-                            fx.DiffuseColor = Color.Gray.ToVector3();
+                            // un auto flotando y letras?! Eso seria una cosa 3.
+                            IsoCamera.Update(mainCar.CarWorld);
+                            
+                            SpriteBatch.Begin(
+                                samplerState: SamplerState.LinearWrap  
+                            );
+                            Point windowCenter= new Point(windowCornerBR.X/2, windowCornerBR.Y);
+                            UI.DrawTextOnXY("Testing Hello", windowCenter,1);
+                            SpriteBatch.End();
+                            
+                            mainCar.drawMainCarOnCenter(IsoCamera);
+                            enemyCar1.drawCars(IsoCamera);
+                            break;
                         }
                         
-                        mesh.Draw();
-                    }
+                        case END_SCREEN:{
 
+                            // Solo letras no tengo ganas de muchas cosas.
+                            //not idea what's going to be here hehehehehehe When does the game end?!
+                            break;
+                        }
 
-                    BasicEffect auxRamp = new BasicEffect(GraphicsDevice);
-                    auxRamp.View       = IsoCamera.View;
-                    auxRamp.Projection = IsoCamera.Projection;
-                    auxRamp.EnableDefaultLighting();
-                    
-                    Effect effect = auxRamp;
-                    for (int i = 0; i < rampWorld.Length ; i++)
-                    {
-                        auxRamp.World      = rampWorld[i];
-                        boxPrimitive.Draw(effect);
+                    default:
+                        {
+                            
+                            GraphicsDevice.DepthStencilState = DepthStencilState.Default;
+                            //drawing cubeMap
+                            foreach (CubeMapFace face in Enum.GetValues(typeof(CubeMapFace)))
+                            {
+                                GraphicsDevice.SetRenderTarget(environmentMap, face);
+                                GraphicsDevice.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.CornflowerBlue, 1f, 0);
+
+                                // Orient and build the view for this face
+                                cubeMapCamera.SetFace(face);
+
+                                // Draw your world geometry.
+                                MapCreator.EarthDraw(GraphicsDevice, IsoCamera);// let's do this by ISOCAMERA FOR NOW. AHHHHH JESUS.
+                                MapCreator.UpdateFrustum(new BoundingFrustum(cubeMapCamera.View * cubeMapCamera.Projection));
+                                MapCreator.WeaponsDraw();
+                                BasicEffect auxRampCube = new BasicEffect(GraphicsDevice);
+                                auxRampCube.View = IsoCamera.View;
+                                auxRampCube.Projection = IsoCamera.Projection;
+                                auxRampCube.EnableDefaultLighting();
+
+                                Effect effectAuxCube = auxRampCube;
+                                for (int i = 0; i < rampWorld.Length; i++)
+                                {
+                                    auxRampCube.World = rampWorld[i];
+                                    boxPrimitive.Draw(effectAuxCube);
+
+                                }
+                                
+                            }
+                            GraphicsDevice.SetRenderTarget(null);
+                            
+                            /*carShader.Parameters["EnvTex"].SetValue(environmentMap);*/ /// these don't seem to work at all.
+                            GraphicsDevice.Textures[2] = environmentMap;
+                            GraphicsDevice.SamplerStates[2] = SamplerState.LinearWrap;
+                            MapCreator.EarthDraw(GraphicsDevice,IsoCamera);
+                            MapCreator.UpdateFrustum(boundingFrustum);
+                            MapCreator.WeaponsDraw();
+                            
+                            //this draws car on center. Shocking, I know.
+                            mainCar.drawMainCarOnCenter(IsoCamera);
+                            enemyCar1.drawCars(IsoCamera);
+                           
+                            ////////////////////////
+                            /// THIS IS NO LONGER DRAWING A RAMP, WONDER WHY.
+                            //supposed to draw the ramp.
+                            BasicEffect auxRamp = new BasicEffect(GraphicsDevice);
+                            auxRamp.View = IsoCamera.View;
+                            auxRamp.Projection = IsoCamera.Projection;
+                            auxRamp.EnableDefaultLighting();
+
+                            Effect effect = auxRamp;
+                            for (int i = 0; i < rampWorld.Length; i++)
+                            {
+                                auxRamp.World = rampWorld[i];
+                                boxPrimitive.Draw(effect);
+
+                            }
+                            ///////////////////////////////////
+
+                            /*mainCar.carModel.Draw(mainCar.CarWorld,IsoCamera.View, IsoCamera.Projection);*/
+                            lineEffect.View = IsoCamera.View;
+                            lineEffect.World = Matrix.Identity;
+                            foreach (var pass in lineEffect.CurrentTechnique.Passes)
+                            {
+                                pass.Apply();
+                                GraphicsDevice.DrawUserPrimitives(
+                                    PrimitiveType.LineStrip,
+                                    borderVerts, 0, borderVerts.Length - 1);
+                            }
+
+                            
+                            Point aux = new Point(windowCornerBR.X / 2, windowCornerBR.Y);
+                            UI.DrawTextOnXY("Speed:" + finalSpeed*5, aux, 1); // THIS NEEDS FURTHER WORK maybe change from screen to viewport.
+                            UI.DrawTextOnXY("TIME:" + (int)timer, windowCornerBL,1);
+
+                            
+                        }
                         
+                            break;
                     }
-                    
-                    /*mainCar.carModel.Draw(mainCar.CarWorld,IsoCamera.View, IsoCamera.Projection);*/
-                    
-                    lineEffect.View  = IsoCamera.View;
-                    lineEffect.World = Matrix.Identity; 
-                    
-                    foreach (var pass in lineEffect.CurrentTechnique.Passes)
-                    {
-                        pass.Apply();
-                        GraphicsDevice.DrawUserPrimitives(
-                            PrimitiveType.LineStrip,
-                            borderVerts, 0, borderVerts.Length - 1);
-                    }
-
                 }
-
+                
                 /// <summary>
                 ///     Libero los recursos que se cargaron en el juego.
                 /// </summary>
