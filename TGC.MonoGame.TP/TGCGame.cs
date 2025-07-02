@@ -84,7 +84,7 @@
                 private KeyboardState previousKeyboardState;
 
                 private int windowW;
-                private int windowH;
+                private int windowH; //perhaps change this later
                 private int windowX;
                 private int windowY;
                 private Point windowCornerTL;   //top left
