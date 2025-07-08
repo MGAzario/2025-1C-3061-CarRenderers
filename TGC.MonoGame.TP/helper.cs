@@ -112,7 +112,9 @@ public class Cars
     {
         carEffect = fx;
     }
-
+    
+    
+    
     public void drawMainCarOnCenter(IsoCamera camera)
     {
         
@@ -133,7 +135,7 @@ public class Cars
             
             
             //DON'T REALLY KNOW WHAT TO DO WITH THIS.!!!
-            carEffect.Parameters["headLight"].SetValue(headLightPos);// keep it fixed for now will change it later.
+            /*carEffect.Parameters["headLight"].SetValue(headLightPos);*/// keep it fixed for now will change it later.
 
             if (mesh.Name.Contains("Wheel"))
             {
@@ -174,7 +176,7 @@ public class Cars
             
             
             //DON'T REALLY KNOW WHAT TO DO WITH THIS.!!!
-            carEffect.Parameters["headLight"].SetValue(headLightPos);// keep it fixed for now will change it later.
+            /*carEffect.Parameters["headLight"].SetValue(headLightPos);*/// keep it fixed for now will change it later.
 
             if (mesh.Name.Contains("Wheel"))
             {

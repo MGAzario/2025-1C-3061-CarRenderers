@@ -64,7 +64,9 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
 {
     VertexShaderOutput output = (VertexShaderOutput)0;
     
-    output.Normal = mul(float4(normalize(input.Normal.xyz), 1.0), InverseTransposeWorld);
+    float3 worldNormal = mul(float4(input.Normal.xyz, 0.0), InverseTransposeWorld).xyz;
+    worldNormal = normalize(worldNormal);
+    output.Normal = float4(worldNormal, 0.0);
     output.TextureCoordinates = input.TextureCoordinates;
     output.Position = mul(input.Position, WorldViewProjection);
     output.WorldPosition = mul(input.Position, World);
@@ -90,8 +92,12 @@ float4 ObstaclePS(VertexShaderOutput input) : SV_TARGET
                                            
                             
     //final color = base
-    float3 light= blinnPhong;
-    return float4(light,1);
+    // sample your earth texture
+        float3 albedo = SceneTex.Sample(SceneSamp, input.TextureCoordinates).rgb;
+    
+        // combine
+        float3 final = saturate(blinnPhong) * albedo;
+        return float4(final,1);
 }
 
 

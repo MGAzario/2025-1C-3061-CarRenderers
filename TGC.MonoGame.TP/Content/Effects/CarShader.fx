@@ -88,7 +88,9 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
 {
     VertexShaderOutput output = (VertexShaderOutput)0;
     
-    output.Normal = mul(float4(normalize(input.Normal.xyz), 1.0), InverseTransposeWorld);
+    float3 worldNormal = mul(float4(input.Normal.xyz, 0.0), InverseTransposeWorld).xyz;
+    worldNormal = normalize(worldNormal);
+    output.Normal = float4(worldNormal, 0.0);
     output.TextureCoordinates = input.TextureCoordinates;
     output.Position = mul(input.Position, WorldViewProjection);
     output.WorldPosition = mul(input.Position, World);
@@ -98,7 +100,8 @@ VertexShaderOutput MainVS(in VertexShaderInput input)
 
 float4 CarPS(VertexShaderOutput input) : SV_TARGET
 {
-    float3 blinnPhong = BlinnPhongPSMath(input.Normal.xyz,
+    
+    float4 blinnPhong = BlinnPhongPSMath(input.Normal.xyz,
                                            input.WorldPosition.xyz,
                                            lightPosition,
                                            eyePosition,
@@ -112,14 +115,16 @@ float4 CarPS(VertexShaderOutput input) : SV_TARGET
                                            input.TextureCoordinates,
                                            headLight);
                                            
-    float4 env = EnvEffectMath(input.TextureCoordinates,
-                            input.Normal.xyz,
-                            eyePosition,
-                            input.WorldPosition.xyz);
-                            
-    //final color = base + reflection.
-    float3 light= blinnPhong + env.rgb;
-    return float4(light,1);
+    float3 env = EnvEffectMath(
+            input.TextureCoordinates,
+            input.Normal.xyz,
+            eyePosition,
+            input.WorldPosition.xyz
+        ).rgb * 0.2;
+    
+        // Combine lit‑and‑textured + env
+        float3 final = saturate(blinnPhong.rgb) + env;
+        return float4(final, blinnPhong.a);
 }
 
 float4 BloomExtractPS(VertexShaderOutput input) : SV_TARGET
