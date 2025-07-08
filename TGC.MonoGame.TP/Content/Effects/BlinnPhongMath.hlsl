@@ -31,17 +31,17 @@ float4 BlinnPhongPSMath(
     float specularLightFinal = NdotH * spec * KSpecular;//specular light * saturate(n dot h)
     float3 diffuseLightFinal = KDiffuse * diffuseColor * NdotL;
 
-    float3 Lh = normalize(headLight - worldPos);
+    /*float3 Lh = normalize(headLight - worldPos);
     float3 Hh = normalize(Lh + V);
     float  NdotHh = saturate(dot(normal, Hh));
     float3 specH = specularColor * pow(NdotHh, shininess);
     float NdotLh = saturate(dot(normal, Lh));
     float specularHeadLightF = NdotHh * specH * KSpecular;
-    float3 diffuseHeadLightF = KDiffuse * diffuseColor * NdotLh;
+    float3 diffuseHeadLightF = KDiffuse * diffuseColor * NdotLh;*/
 
-    float3 totalLightingAux = ambientLightFinal + diffuseHeadLightF + diffuseLightFinal;
+    float3 totalLightingAux = ambientLightFinal + diffuseLightFinal  /*+ diffuseHeadLightF*/;
 
-    float3 totalSpecularLight = specularLightFinal + specularHeadLightF;
+    float3 totalSpecularLight = specularLightFinal /*+ specularHeadLightF*/;
     
     return float4((totalLightingAux * texelColor.rgb) + totalSpecularLight,texelColor.a);
 

@@ -144,12 +144,13 @@ namespace TGC.MonoGame.TP.Content
             EarthShader.Parameters["specularColor"].SetValue(new Vector3(1f, 1f, 1f));
 
             EarthShader.Parameters["KAmbient"].SetValue(0.5f);
-            EarthShader.Parameters["KDiffuse"].SetValue(1.0f);
+            EarthShader.Parameters["KDiffuse"].SetValue(0.8f);
             EarthShader.Parameters["KSpecular"].SetValue(0.8f);
             EarthShader.Parameters["shininess"].SetValue(10.0f);
                     
             EarthShader.Parameters["lightPosition"].SetValue(lightPosition);
 
+            EarthShader.Parameters["SceneSamp+SceneTex"].SetValue(earthTexture);
             foreach (var pass in EarthShader.CurrentTechnique.Passes)
             {
                 pass.Apply();

@@ -74,6 +74,7 @@
                 VertexPositionTexture[] floorVerts;
                 
                 private Texture2D earthTexture;
+                private Texture2D carTexture;
                 
                 private SoundEffect accelerationSound;
                 private SoundEffectInstance accelerationInst;
@@ -231,7 +232,9 @@
                     environmentMap = new RenderTargetCube(GraphicsDevice, 2048, false,
                         SurfaceFormat.Color, DepthFormat.Depth24, 0, RenderTargetUsage.DiscardContents);
                     //here we get the texture from BasicEffect.... you know, maybe it works.
-                    var texture = ((BasicEffect) mainCar.carModel.Meshes.FirstOrDefault()?.MeshParts.FirstOrDefault()?.Effect)?.Texture;
+                    
+                    string carTexturePath = ContentFolder3D + "/tgc-media-2023-2c/Vehicle_basecolor";
+                    carTexture = Content.Load<Texture2D>(carTexturePath);
                     
                     //here we apply the carShader to mainCar andbelow to enemyCar1. Later we will have a list of enemyCars.
                     //a singular car is only for test change that later.
@@ -239,7 +242,23 @@
                     {
                         foreach (var meshPart in modelMesh.MeshParts)
                         {
-                            meshPart.Effect = carShader;
+                            
+                            var carShaderClone =carShader.Clone();
+                            meshPart.Effect = carShaderClone;
+                            carShaderClone.Parameters["SceneSamp+SceneTex"].SetValue(carTexture);
+                          
+                            carShaderClone.Parameters["ambientColor"].SetValue(new Vector3(0.3f, 0.3f, 0.3f));
+                            carShaderClone.Parameters["diffuseColor"].SetValue(Vector3.One);
+                            carShaderClone.Parameters["specularColor"].SetValue(Vector3.One);
+
+                            carShaderClone.Parameters["KAmbient"].SetValue(0.05f);
+                            carShaderClone.Parameters["KDiffuse"].SetValue(0.8f);
+                            carShaderClone.Parameters["KSpecular"].SetValue(0.2f);
+                            carShaderClone.Parameters["shininess"].SetValue(32f);
+
+                            carShaderClone.Parameters["lightPosition"].SetValue(lightPosition);
+                            carShaderClone.Parameters["eyePosition"].SetValue(IsoCamera.eye);
+                          
                         }
                     }
                     
@@ -258,17 +277,17 @@
                     //CONSIDER USING A DIFFERENT INSTACE OF CARSHADER FOR ENEMYCARS. OR NOT.
                     //////Here we set some of the parameters of the CarShader. Maybe we move this to a different location later. 
                     /*carShader.Parameters["SceneTex"].SetValue(texture);*/
-                    GraphicsDevice.Textures[0] = texture;
+                    GraphicsDevice.Textures[0] = carTexture;
                     GraphicsDevice.SamplerStates[0] = SamplerState.LinearWrap;
                     
-                    carShader.Parameters["ambientColor"].SetValue(new Vector3(0.4f, 0.4f, 0.4f));
+                    /*carShader.Parameters["ambientColor"].SetValue(new Vector3(0.2f, 0.2f, 0.2f));
                     carShader.Parameters["diffuseColor"].SetValue(new Vector3(1f, 1f, 1f));
                     carShader.Parameters["specularColor"].SetValue(new Vector3(1f, 1f, 1f));
 
-                    carShader.Parameters["KAmbient"].SetValue(0.5f);
+                    carShader.Parameters["KAmbient"].SetValue(0.1f);
                     carShader.Parameters["KDiffuse"].SetValue(1.0f);
-                    carShader.Parameters["KSpecular"].SetValue(0.8f);
-                    carShader.Parameters["shininess"].SetValue(10.0f);
+                    carShader.Parameters["KSpecular"].SetValue(0.2f);
+                    carShader.Parameters["shininess"].SetValue(32.0f);
                     
                     carShader.Parameters["lightPosition"].SetValue(lightPosition);
                     /////
@@ -426,7 +445,7 @@
                             IsoCamera.Update(mainCar.CarWorld);
                             
                             
-                            carShader.Parameters["eyePosition"].SetValue(IsoCamera.eye);
+                            /*carShader.Parameters["eyePosition"].SetValue(IsoCamera.eye);*/
 
                             
                             var rotation = Matrix.CreateRotationY(mainCar.CarRotation);
@@ -483,6 +502,7 @@
                     {
 
                         case PRESENTATION_0_SCREN:{
+                            
 
                             // un auto flotando y letras?! Eso seria una cosa 3.
                             IsoCamera.Update(mainCar.CarWorld);
@@ -513,6 +533,7 @@
                             //drawing cubeMap
                             foreach (CubeMapFace face in Enum.GetValues(typeof(CubeMapFace)))
                             {
+                                
                                 GraphicsDevice.SetRenderTarget(environmentMap, face);
                                 GraphicsDevice.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.CornflowerBlue, 1f, 0);
 
@@ -601,6 +622,8 @@
                     base.UnloadContent();
                 }
             }
+            
+            
         }
         
         
