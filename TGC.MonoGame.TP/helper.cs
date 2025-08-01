@@ -125,78 +125,70 @@ public class Cars
                             * Matrix.CreateTranslation(CarHeight)
                             * Matrix.CreateTranslation(CarPosition);
 
-            Matrix world   = mesh.ParentBone.Transform * baseWorld;
-            Matrix wvp     = world * camera.View * camera.Projection;
-            Matrix invTrW  = Matrix.Transpose(Matrix.Invert(world));
+            // compute un‑spun world:
+            Matrix world = mesh.ParentBone.Transform * baseWorld;
+
+            // if it’s a wheel, spin it:
+            if (mesh.Name.Contains("Wheel"))
+            {
+                var spin   = Matrix.CreateRotationX(wheelRotation * 10f / wheelRadius);
+                world = spin * mesh.ParentBone.Transform * baseWorld;
+            }
+
+            // now compute your matrices from the *final* world:
+            Matrix wvp    = world * camera.View * camera.Projection;
+            Matrix invTrW = Matrix.Transpose(Matrix.Invert(world));
 
             carEffect.Parameters["WorldViewProjection"].SetValue(wvp);
             carEffect.Parameters["World"].SetValue(world);
             carEffect.Parameters["InverseTransposeWorld"].SetValue(invTrW);
-            
-            
-            //DON'T REALLY KNOW WHAT TO DO WITH THIS.!!!
-            /*carEffect.Parameters["headLight"].SetValue(headLightPos);*/// keep it fixed for now will change it later.
-
-            if (mesh.Name.Contains("Wheel"))
-            {
-                var spin = Matrix.CreateRotationX(wheelRotation * 50f /
-                                                  wheelRadius);
-                carEffect.Parameters["World"].SetValue(spin * mesh.ParentBone.Transform * baseWorld);
-                
-            }
-            else
-            {
-                carEffect.Parameters["World"].SetValue(mesh.ParentBone.Transform * baseWorld);
-            }
 
             foreach (var pass in carEffect.CurrentTechnique.Passes)
             {
+                pass.Apply();
                 mesh.Draw();
             }
-            
         }
     }
 
     public void drawCars(IsoCamera camera)
     {
-        
         foreach (var mesh in carModel.Meshes)
         {
+            // 1) Compute the shared base world transform
             var baseWorld = Matrix.CreateRotationY(CarRotation)
                             * Matrix.CreateTranslation(CarHeight)
                             * Matrix.CreateTranslation(CarPosition);
 
-            Matrix world   = mesh.ParentBone.Transform * baseWorld;
-            Matrix wvp     = world * camera.View * camera.Projection;
-            Matrix invTrW  = Matrix.Transpose(Matrix.Invert(world));
-
-            carEffect.Parameters["WorldViewProjection"].SetValue(wvp);
-            carEffect.Parameters["World"].SetValue(world);
-            carEffect.Parameters["InverseTransposeWorld"].SetValue(invTrW);
-            
-            
-            //DON'T REALLY KNOW WHAT TO DO WITH THIS.!!!
-            /*carEffect.Parameters["headLight"].SetValue(headLightPos);*/// keep it fixed for now will change it later.
-
+            // 2) Compute the final world, including spin for wheels
+            Matrix world;
             if (mesh.Name.Contains("Wheel"))
             {
-                var spin = Matrix.CreateRotationX(wheelRotation * 10f /
-                                                  wheelRadius);
-                carEffect.Parameters["World"].SetValue(spin * mesh.ParentBone.Transform * baseWorld);
-                
+                // apply spin around local X
+                var spin = Matrix.CreateRotationX(wheelRotation * 10f / wheelRadius);
+                world = spin * mesh.ParentBone.Transform * baseWorld;
             }
             else
             {
-                carEffect.Parameters["World"].SetValue(mesh.ParentBone.Transform * baseWorld);
+                world = mesh.ParentBone.Transform * baseWorld;
             }
 
+            // 3) Now compute the derived matrices from that final world
+            Matrix wvp    = world * camera.View * camera.Projection;
+            Matrix invTrW = Matrix.Transpose(Matrix.Invert(world));
+
+            // 4) Upload all three to the shader
+            carEffect.Parameters["WorldViewProjection"].SetValue(wvp);
+            carEffect.Parameters["World"].SetValue(world);
+            carEffect.Parameters["InverseTransposeWorld"].SetValue(invTrW);
+
+            // 5) Draw with the active shader
             foreach (var pass in carEffect.CurrentTechnique.Passes)
             {
+                pass.Apply();
                 mesh.Draw();
             }
-            
         }
-        
     }
 
 
