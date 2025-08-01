@@ -9,9 +9,9 @@ namespace TGC.MonoGame.TP
     {
         private const float AxisDistanceToTarget = 10000f;
         
-        public  Matrix Projection { get; private set; }
+        public  Matrix Projection { get; set; }
 
-        public  Matrix View { get; private set; }
+        public  Matrix View { get; set; }
         
         public  Vector3 eye;
         

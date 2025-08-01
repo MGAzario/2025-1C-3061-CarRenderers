@@ -20,6 +20,7 @@
             {
             public Model Model;
             public Matrix World;
+            public bool IsTree = false;
             }
             public class TGCGame : Game
             {
@@ -29,7 +30,7 @@
                 public const int END_SCREEN = 2;
                 public int STATUS = PRESENTATION_0_SCREN;
                 
-                public readonly Vector3 lightPosition = new Vector3(300f,300f, -300f);
+                public readonly Vector3 lightPosition = new Vector3(800f,800f, 800f);
                 
                 public const string ContentFolder3D = "Models/";
                 public const string ContentFolderEffects = "Effects/";
@@ -38,6 +39,7 @@
                 public const string ContentFolderSpriteFonts = "SpriteFonts/";
                 public const string ContentFolderTextures = "Textures/";
                 private List<ModelInstance> instances;
+                private List<ModelInstance> TreeInstances;
                 private List<Vector3> listaCoord; // Do we need this?
                 
                 private IsoCamera IsoCamera { get; set; }
@@ -54,6 +56,7 @@
                 
                 private BoundingSphere powerSphere;
                 private List<BoundingSphere> listPowerSphere;
+                private List<BoundingSphere> listTreeSphere;
                 //private List<BoundingBox> listTerrain;
                 
                 private OBB carBox;
@@ -194,7 +197,7 @@
                     windowCornerBL = new Point(windowX, windowY + windowH);
                     windowCornerBR = new Point(windowX + windowW, windowY + windowH);
                     
-                    
+                    GraphicsDevice.BlendState = BlendState.AlphaBlend;
                     base.Initialize();
                     
                 }
@@ -223,6 +226,8 @@
                     
                     instances = new List<ModelInstance>(); 
                     listPowerSphere = new List<BoundingSphere>();
+                    TreeInstances = new List<ModelInstance>();
+                    listTreeSphere = new List<BoundingSphere>();
                     
                     //here we load the car models
                     string playCarPath = ContentFolder3D + "/tgc-media-2023-2c/RacingCar";
@@ -243,21 +248,7 @@
                         foreach (var meshPart in modelMesh.MeshParts)
                         {
                             
-                            var carShaderClone =carShader.Clone();
-                            meshPart.Effect = carShaderClone;
-                            carShaderClone.Parameters["SceneSamp+SceneTex"].SetValue(carTexture);
-                          
-                            carShaderClone.Parameters["ambientColor"].SetValue(new Vector3(0.3f, 0.3f, 0.3f));
-                            carShaderClone.Parameters["diffuseColor"].SetValue(Vector3.One);
-                            carShaderClone.Parameters["specularColor"].SetValue(Vector3.One);
-
-                            carShaderClone.Parameters["KAmbient"].SetValue(0.05f);
-                            carShaderClone.Parameters["KDiffuse"].SetValue(0.8f);
-                            carShaderClone.Parameters["KSpecular"].SetValue(0.2f);
-                            carShaderClone.Parameters["shininess"].SetValue(32f);
-
-                            carShaderClone.Parameters["lightPosition"].SetValue(lightPosition);
-                            carShaderClone.Parameters["eyePosition"].SetValue(IsoCamera.eye);
+                            meshPart.Effect = carShader;
                           
                         }
                     }
@@ -272,32 +263,32 @@
                     
                     
                     
-                    
-                    
+                    carShader.Parameters["baseTexture"].SetValue(carTexture);
+                    GraphicsDevice.SamplerStates[0] = SamplerState.LinearClamp;
                     //CONSIDER USING A DIFFERENT INSTACE OF CARSHADER FOR ENEMYCARS. OR NOT.
                     //////Here we set some of the parameters of the CarShader. Maybe we move this to a different location later. 
                     /*carShader.Parameters["SceneTex"].SetValue(texture);*/
-                    GraphicsDevice.Textures[0] = carTexture;
-                    GraphicsDevice.SamplerStates[0] = SamplerState.LinearWrap;
+                    /*GraphicsDevice.Textures[0] = carTexture;
+                    GraphicsDevice.SamplerStates[0] = SamplerState.LinearWrap;*/
                     
-                    /*carShader.Parameters["ambientColor"].SetValue(new Vector3(0.2f, 0.2f, 0.2f));
-                    carShader.Parameters["diffuseColor"].SetValue(new Vector3(1f, 1f, 1f));
+                    
+                    carShader.Parameters["ambientColor"].SetValue(new Vector3(1f, 1f, 1f));  
+                    carShader.Parameters["KAmbient"].SetValue(0.5f);
+                    
+                    carShader.Parameters["diffuseColor"].SetValue(new Vector3(0.1f, 0.1f, 0.6f));
                     carShader.Parameters["specularColor"].SetValue(new Vector3(1f, 1f, 1f));
 
-                    carShader.Parameters["KAmbient"].SetValue(0.1f);
+               
                     carShader.Parameters["KDiffuse"].SetValue(1.0f);
-                    carShader.Parameters["KSpecular"].SetValue(0.2f);
-                    carShader.Parameters["shininess"].SetValue(32.0f);
-                    
+                    carShader.Parameters["KSpecular"].SetValue(1.5f);
+                    carShader.Parameters["shininess"].SetValue(8.0f);
                     carShader.Parameters["lightPosition"].SetValue(lightPosition);
-                    /////
-                    
                     
                     /*World = mainCar.CarWorld;*/
                     boxPrimitive = new BoxPrimitive(GraphicsDevice, Vector3.One, earthTexture);// Apprently we do need this. ??? why?
                     MapCreator.LoadAll(Content);// loads weapons floor texture path. and other things on map.
                     (instances, listPowerSphere) = MapCreator.InitializeWeapons(Content);// what name suggest. This inlcude spheres for power.
-                    
+                    (TreeInstances, listTreeSphere) = MapCreator.InitializeTree(Content);
                     
                     string carAccelerationPath = ContentFolderSounds + "/carAcceleration/car acceleration";
                     accelerationSound = Content.Load<SoundEffect>(carAccelerationPath);
@@ -492,10 +483,10 @@
                     GraphicsDevice.Clear(Color.Blue);
                     
                     // Para dibujar le modelo necesitamos pasarle informacion que el efecto esta esperando.
-                    this.Effect = MapCreator.Effect;
+                    /*this.Effect = MapCreator.Effect;
                     Effect.Parameters["View"].SetValue(IsoCamera.View);
                     Effect.Parameters["Projection"].SetValue(IsoCamera.Projection);
-                    Effect.Parameters["DiffuseColor"].SetValue(Color.Red.ToVector3());
+                    Effect.Parameters["DiffuseColor"].SetValue(Color.Red.ToVector3());*/
 
 
                     switch (STATUS)
@@ -529,6 +520,9 @@
                     default:
                         {
                             
+                            //cache for camera
+                            var realView       = IsoCamera.View;       
+                            var realProjection = IsoCamera.Projection; 
                             GraphicsDevice.DepthStencilState = DepthStencilState.Default;
                             //drawing cubeMap
                             foreach (CubeMapFace face in Enum.GetValues(typeof(CubeMapFace)))
@@ -539,11 +533,18 @@
 
                                 // Orient and build the view for this face
                                 cubeMapCamera.SetFace(face);
+                                
+                                
+                                //draws only take Isocamera so we jam in cubeMapCamera
+                                IsoCamera.View       = cubeMapCamera.View;      
+                                IsoCamera.Projection = cubeMapCamera.Projection; 
 
                                 // Draw your world geometry.
                                 MapCreator.EarthDraw(GraphicsDevice, IsoCamera);// let's do this by ISOCAMERA FOR NOW. AHHHHH JESUS.
                                 MapCreator.UpdateFrustum(new BoundingFrustum(cubeMapCamera.View * cubeMapCamera.Projection));
-                                MapCreator.WeaponsDraw();
+                                MapCreator.ObstacleDraw(GraphicsDevice,IsoCamera, instances, listPowerSphere);
+                                MapCreator.ObstacleDraw(GraphicsDevice,IsoCamera, TreeInstances, listTreeSphere);
+
                                 BasicEffect auxRampCube = new BasicEffect(GraphicsDevice);
                                 auxRampCube.View = IsoCamera.View;
                                 auxRampCube.Projection = IsoCamera.Projection;
@@ -558,14 +559,24 @@
                                 }
                                 
                             }
+                            //get the cameras back
+                            IsoCamera.View       = realView;       
+                            IsoCamera.Projection = realProjection; 
+                            
                             GraphicsDevice.SetRenderTarget(null);
                             
+                            carShader.Parameters["environmentMap"].SetValue(environmentMap);
+                            GraphicsDevice.SamplerStates[1] = SamplerState.LinearClamp;
+
+                            // 4) Pass the current camera position into the shader
+                            carShader.Parameters["eyePosition"].SetValue(IsoCamera.eye);
+                            
                             /*carShader.Parameters["EnvTex"].SetValue(environmentMap);*/ /// these don't seem to work at all.
-                            GraphicsDevice.Textures[2] = environmentMap;
-                            GraphicsDevice.SamplerStates[2] = SamplerState.LinearWrap;
+                            
                             MapCreator.EarthDraw(GraphicsDevice,IsoCamera);
                             MapCreator.UpdateFrustum(boundingFrustum);
-                            MapCreator.WeaponsDraw();
+                            MapCreator.ObstacleDraw(GraphicsDevice,IsoCamera, instances, listPowerSphere);
+                            MapCreator.ObstacleDraw(GraphicsDevice,IsoCamera, TreeInstances, listTreeSphere);
                             
                             //this draws car on center. Shocking, I know.
                             mainCar.drawMainCarOnCenter(IsoCamera);
